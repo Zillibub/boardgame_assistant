@@ -1,7 +1,6 @@
 import discord
 import openai
 import time
-from discord import Interaction
 from discord.ext import commands
 from discord import app_commands
 from settings import settings
@@ -50,7 +49,8 @@ async def get_assistants(interaction: discord.Interaction):
 
 
 @discord_client.tree.command(name='select_assistant', description='Select an assistant for this chat.')
-async def select_assistant(interaction: discord.Interaction, assistant_name):
+@app_commands.describe(assistant_name="The name of the assistant to select.")
+async def select_assistant(interaction: discord.Interaction, assistant_name: str):
     if assistant_name in assistants:
         thread = openai_client.beta.threads.create()
         chat_threads[interaction.channel.id] = (assistants[assistant_name], thread.id)

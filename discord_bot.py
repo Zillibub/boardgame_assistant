@@ -43,29 +43,30 @@ async def on_ready():
         print(e)
 
 
-@discord_client.tree.command(name="get_assistants")
+@discord_client.tree.command(name="get_assistants", description='Get the list of available assistants.')
 async def get_assistants(interaction: discord.Interaction):
+    # Why cannot find reference?
     await interaction.response.send_message(f'Available assistants: {assistants}')
 
 
-@discord_client.hybrid_command(name='select_assistant', description='Select an assistant for this chat.')
-async def select_assistant(ctx, assistant_name):
+@discord_client.tree.command(name='select_assistant', description='Select an assistant for this chat.')
+async def select_assistant(interaction: discord.Interaction, assistant_name):
     if assistant_name in assistants:
         thread = openai_client.beta.threads.create()
-        chat_threads[ctx.channel.id] = (assistants[assistant_name], thread.id)
+        chat_threads[interaction.channel.id] = (assistants[assistant_name], thread.id)
 
-        await ctx.send(f'Selected {assistant_name} as your assistant.')
+        await interaction.response.send_message(f'Selected {assistant_name} as your assistant.')
     else:
-        await ctx.send(f'No assistant named {assistant_name} found.')
+        await interaction.response.send_message(f'No assistant named {assistant_name} found.')
 
 
-@discord_client.command(name='current_assistant', description='Get the current assistant for this chat.')
-async def current_assistant(ctx):
-    if ctx.channel.id in chat_threads:
-        assistant_id, thread_id = chat_threads[ctx.channel.id]
-        await ctx.send(f'Current assistant: {assistant_id}')
+@discord_client.tree.command(name='current_assistant', description='Get the current assistant for this chat.')
+async def current_assistant(interaction: discord.Interaction):
+    if interaction.channel.id in chat_threads:
+        assistant_id, thread_id = chat_threads[interaction.channel.id]
+        await interaction.response.send_message(f'Current assistant: {assistant_id}')
     else:
-        await ctx.send('No assistant selected.')
+        await interaction.response.send_message('No assistant selected.')
 
 
 @discord_client.event

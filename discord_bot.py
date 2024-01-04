@@ -1,7 +1,9 @@
 import discord
 import openai
 import time
+from discord import Interaction
 from discord.ext import commands
+from discord import app_commands
 from settings import settings
 
 intents = discord.Intents.default()
@@ -9,7 +11,7 @@ intents.message_content = True
 
 # Your OpenAI API Key
 openai_key = 'YOUR_OPENAI_API_KEY'
-discord_client = commands.Bot(command_prefix='/', intents=intents)
+discord_client = commands.Bot(command_prefix='!', intents=intents)
 openai_client = openai.Client(api_key=openai_key)
 
 # List of available assistants
@@ -34,14 +36,19 @@ def create_assistant_and_thread():
 @discord_client.event
 async def on_ready():
     print(f'We have logged in as {discord_client.user}')
+    try:
+        synced = await discord_client.tree.sync()
+        print(f'Synced: {len(synced)} commands')
+    except Exception as e:
+        print(e)
 
 
-@discord_client.command()
-async def get_assistants(ctx):
-    await ctx.send(f'Available assistants: {assistants}')
+@discord_client.tree.command(name="get_assistants")
+async def get_assistants(interaction: discord.Interaction):
+    await interaction.response.send_message(f'Available assistants: {assistants}')
 
 
-@discord_client.hybrid_command()
+@discord_client.hybrid_command(name='select_assistant', description='Select an assistant for this chat.')
 async def select_assistant(ctx, assistant_name):
     if assistant_name in assistants:
         thread = openai_client.beta.threads.create()
@@ -52,7 +59,7 @@ async def select_assistant(ctx, assistant_name):
         await ctx.send(f'No assistant named {assistant_name} found.')
 
 
-@discord_client.command()
+@discord_client.command(name='current_assistant', description='Get the current assistant for this chat.')
 async def current_assistant(ctx):
     if ctx.channel.id in chat_threads:
         assistant_id, thread_id = chat_threads[ctx.channel.id]

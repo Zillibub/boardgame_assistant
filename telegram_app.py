@@ -1,4 +1,4 @@
-from embedo.core.settings import settings
+from core.settings import settings
 from telegram import Update
 from telegram.ext import (
     Application,
@@ -6,6 +6,8 @@ from telegram.ext import (
     MessageHandler,
     filters,
 )
+import time
+import openai
 from pathlib import Path
 from datetime import datetime
 from collections import deque, defaultdict
@@ -19,6 +21,9 @@ conversation_history = defaultdict(lambda: deque(maxlen=10))
 engine = create_engine(settings.USER_LOGS_DB, echo=True)
 
 Session = sessionmaker(bind=engine)
+openai_client = openai.Client(api_key=settings.openai_token)
+
+chat_threads = {}
 
 
 def log_question_and_answer(chat_id, question, answer):
@@ -33,42 +38,41 @@ def log_question_and_answer(chat_id, question, answer):
 
 async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
+    if update.message.chat_id not in chat_threads.keys():
+        chat_threads[update.message.chat_id] = openai_client.beta.threads.create()
+
     question = update.message.text
 
-    chat_history = conversation_history[update.message.chat_id]
-
-    result = await RetrievalChainManager(settings.vector_store_path).chain.acall(
-        {"question": question, "chat_history": chat_history}
-    )
-    chat_history.append((question, result["answer"]))
+    result = await openai_answer(question, settings, chat_threads[update.message.chat_id])
 
     log_question_and_answer(update.message.chat_id, question, result["answer"])
+    for r in result:
+        await update.message.reply_text(r)
 
-    await update.message.reply_text(result["answer"])
 
+async def openai_answer(question, assistant_id, thread_id):
+    run = openai_client.beta.threads.runs.create(
+        thread_id=thread_id,
+        assistant_id=assistant_id,
+        instructions=question
+    )
+    while run.status == "queued" or run.status == "in_progress":
+        run = openai_client.beta.threads.runs.retrieve(
+            thread_id=thread_id,
+            run_id=run.id,
+        )
+        time.sleep(0.2)
 
-async def ingest(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message.document:
-        await update.message.reply_text("Please, attach a file to update the vector store")
-        return
-    if "zip" not in update.message.document.file_name:
-        await update.message.reply_text("File must be a .zip archive")
-        return
-    file = await context.bot.get_file(update.message.document.file_id)
-    file_path = Path(settings.VECTOR_STORE_FOLDER) / f"vector_store_{datetime.now()}/{update.message.document.file_name}"
-    file_path.parent.mkdir(parents=True, exist_ok=True)
-    await file.download_to_drive(file_path)
-
-    with open(Path(settings.VECTOR_STORE_FOLDER) / Path(settings.VECTOR_STORE_CURRENT_FILENAME), "w") as f:
-        f.write(str(file_path))
-    RetrievalChainManager.ingest(file_path)
-    await update.message.reply_text("File downloaded successfully.")
+    messages = openai_client.beta.threads.messages.list(
+        thread_id=thread_id
+    )
+    return messages
 
 
 def main():
-    application = Application.builder().token(settings.TELEGRAM_BOT_TOKEN).build()
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex("^Ingest"), answer))
-    application.add_handler(MessageHandler(filters.Document.ALL, ingest))
+    application = Application.builder().token(settings.telegram_bot_token).build()
+    # application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex("^Ingest"), answer))
+    # application.add_handler(MessageHandler(filters.Document.ALL, ingest))
 
     application.run_polling()
 

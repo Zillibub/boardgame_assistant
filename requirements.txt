@@ -2,3 +2,6 @@ discord==2.3.2
 openai==1.6.1
 pydantic-settings==2.1.0
 discord-py-interactions==4.4.1
+pydantic==2.5.3
+python-telegram-bot == 20.7
+sqlalchemy==2.0.25

@@ -39,22 +39,27 @@ def log_question_and_answer(chat_id, question, answer):
 async def answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if update.message.chat_id not in chat_threads.keys():
-        chat_threads[update.message.chat_id] = openai_client.beta.threads.create()
+        chat_threads[update.message.chat_id] = openai_client.beta.threads.create().id
 
     question = update.message.text
 
-    result = await openai_answer(question, settings, chat_threads[update.message.chat_id])
-
-    log_question_and_answer(update.message.chat_id, question, result["answer"])
-    for r in result:
-        await update.message.reply_text(r)
+    result = await openai_answer(question, settings.assistant_id, chat_threads[update.message.chat_id])
+    reply = result.data[0].content[0].text.value
+    log_question_and_answer(update.message.chat_id, question, reply)
+    await update.message.reply_text(reply)
 
 
 async def openai_answer(question, assistant_id, thread_id):
+
+    openai_client.beta.threads.messages.create(
+        thread_id=thread_id,
+        content=question,
+        role="user"
+    )
     run = openai_client.beta.threads.runs.create(
         thread_id=thread_id,
         assistant_id=assistant_id,
-        instructions=question
+        # instructions=question
     )
     while run.status == "queued" or run.status == "in_progress":
         run = openai_client.beta.threads.runs.retrieve(
@@ -71,7 +76,7 @@ async def openai_answer(question, assistant_id, thread_id):
 
 def main():
     application = Application.builder().token(settings.telegram_bot_token).build()
-    # application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex("^Ingest"), answer))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND & ~filters.Regex("^Ingest"), answer))
     # application.add_handler(MessageHandler(filters.Document.ALL, ingest))
 
     application.run_polling()

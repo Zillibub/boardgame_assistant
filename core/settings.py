@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     openai_token: str
 
     class Config:
-        env_file = ".env"
+        env_file = "../.env"
 
 
 settings = Settings()

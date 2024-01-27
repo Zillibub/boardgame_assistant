@@ -9,7 +9,6 @@ from telegram.ext import (
 from pathlib import Path
 from datetime import datetime
 from collections import deque, defaultdict
-from embedo.chain.retrieval_chain_manager import RetrievalChainManager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from db.chat_log import ChatLog

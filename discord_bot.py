@@ -3,7 +3,7 @@ import openai
 import time
 from discord.ext import commands
 from discord import app_commands
-from settings import settings
+from core.settings import settings
 
 intents = discord.Intents.default()
 intents.message_content = True

@@ -9,7 +9,7 @@ intents = discord.Intents.default()
 intents.message_content = True
 
 # Your OpenAI API Key
-openai_key = 'YOUR_OPENAI_API_KEY'
+openai_key = settings.openai_token
 discord_client = commands.Bot(command_prefix='!', intents=intents)
 openai_client = openai.Client(api_key=openai_key)
 

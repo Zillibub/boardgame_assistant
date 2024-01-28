@@ -8,8 +8,6 @@ from telegram.ext import (
 )
 import time
 import openai
-from pathlib import Path
-from datetime import datetime
 from collections import deque, defaultdict
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
